@@ -23,6 +23,7 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
     {
         private Dictionary<int, Message> _messagesMap = new();
         private List<MessageSection> _messageSections = new();
+        private string _currentFile;
 
         private const int FIRST_MESSAGE_SECTION_POINTER = 0x0011265C;
 
@@ -48,18 +49,24 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
                 _messageSections.RemoveAt(_messageSections.Count - 1);
 
                 messageSectionListBox.ItemsSource = _messageSections;
+                _currentFile = openFileDialog.FileName;
             }
         }
 
         private void FileMenuSaveButton_Click(object sender, RoutedEventArgs e)
         {
-            SaveFileDialog saveFileDialog = new SaveFileDialog
+            if (!string.IsNullOrEmpty(_currentFile))
             {
-                Filter = "GBA ROM file|*.gba"
-            };
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                using FileStream stream = new FileStream(saveFileDialog.FileName, FileMode.OpenOrCreate);
+                using FileStream stream = new FileStream(_currentFile, FileMode.Open);
+                foreach (Message message in _messagesMap.Values)
+                {
+                    stream.Seek(message.Pointer, SeekOrigin.Begin);
+                    stream.Write(message.GetBytes());
+                }
+                foreach (MessageSection messageSection in _messageSections)
+                {
+                    messageSection.WriteMessageBoxesToStream(stream);
+                }
             }
         }
 
@@ -127,9 +134,21 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             {
                 foreach (Message message in ((MessageBox)messageBoxListBox.SelectedItem).Messages)
                 {
-                    messageStackPanel.Children.Add(new TextBox { Text = message.Value });
+                    var messageTextBox = new MessageTextBox { Text = message.Value, Message = message, MaxLength = 0x16 };
+                    messageTextBox.TextChanged += MessageTextBox_TextChanged;
+                    messageStackPanel.Children.Add(messageTextBox);
                 }
             }
+        }
+
+        private void MessageTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = (MessageTextBox)sender;
+            if (textBox.Text.Length < 0x17)
+            {
+                textBox.Message.Value = textBox.Text;
+            }
+            messageBoxListBox.Items.Refresh();
         }
     }
 }

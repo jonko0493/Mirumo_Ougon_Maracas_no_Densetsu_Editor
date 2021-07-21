@@ -13,7 +13,7 @@
         <Menu>
             <MenuItem Header="File">
                 <MenuItem x:Name="fileMenuOpenButton" Header="Open" Click="FileMenuOpenButton_Click" />
-                <MenuItem x:Name="fileMenuSaveButton" Header="Open" Click="FileMenuSaveButton_Click" />
+                <MenuItem x:Name="fileMenuSaveButton" Header="Save" Click="FileMenuSaveButton_Click" />
             </MenuItem>
             <MenuItem Header="Extract">
                 <MenuItem x:Name="extractMenuExtractButton" Header="Extract" Click="FileMenuExtractButton_Click"  />

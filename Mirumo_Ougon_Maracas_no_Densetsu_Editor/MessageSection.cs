@@ -50,7 +50,7 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
                 stream.Read(data, 0, 0x14);
             }
             stream.Seek(-0x14, SeekOrigin.Current);
-            
+
             long pos = stream.Position;
             foreach (MessageBox messageBox in messageSection.MessageBoxes)
             {
@@ -61,7 +61,7 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
                         continue;
                     }
                     if (!messagesMap.ContainsKey(pointer))
-                    { 
+                    {
                         stream.Seek(pointer, SeekOrigin.Begin);
                         stream.Read(data, 0, 0x30);
                         if (Message.TryParse(data, pointer, out Message message))
@@ -80,6 +80,15 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             stream.Seek(pos, SeekOrigin.Begin);
 
             return messageSection;
+        }
+
+        public void WriteMessageBoxesToStream(FileStream stream)
+        {
+            foreach (MessageBox messageBox in MessageBoxes)
+            {
+                stream.Seek(messageBox.Pointer, SeekOrigin.Begin);
+                stream.Write(messageBox.GetBytes());
+            }
         }
     }
 
@@ -103,6 +112,21 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             {
                 return $"0x{Pointer:X8}";
             }
+        }
+
+        public byte[] GetBytes()
+        {
+            List<byte> bytes = new();
+
+            foreach (int pointer in MessagePointers)
+            {
+                bytes.AddRange(BitConverter.GetBytes(0x08000000 + pointer));
+            }
+            bytes.AddRange(BitConverter.GetBytes(HorizontalSize));
+            bytes.AddRange(BitConverter.GetBytes(VerticalSize));
+            bytes.AddRange(new byte[] { 0x00, 0x00, 0x00, 0x00 });
+
+            return bytes.ToArray();
         }
 
         public static bool TryParse(byte[] data, int pointer, out MessageBox messageBox)
@@ -142,6 +166,35 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             return Value;
         }
 
+        public byte[] GetBytes()
+        {
+            List<byte> bytes = new();
+
+            bytes.AddRange(BitConverter.GetBytes(Length));
+            for (int i = 0; i < 0x2C; i += 2)
+            {
+                if (i < Length * 2)
+                {
+                    ushort character;
+                    if (!CharMap.ContainsValue($"{Value[i / 2]}"))
+                    {
+                        character = AltCharMap[$"{Value[i / 2]}"];
+                    }
+                    else
+                    {
+                        character = CharMap.FirstOrDefault(c => c.Value == Value[i / 2].ToString()).Key;
+                    }
+                    bytes.AddRange(BitConverter.GetBytes(character));
+                }
+                else
+                {
+                    bytes.AddRange(new byte[] { 0x00, 0x00 });
+                }
+            }
+
+            return bytes.ToArray();
+        }
+
         public static bool TryParse(byte[] data, int pointer, out Message message)
         {
             message = new();
@@ -167,7 +220,7 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             }
         }
 
-        public static Dictionary<ushort, string> CharMap = new Dictionary<ushort, string>
+        public static Dictionary<ushort, string> CharMap = new()
         {
             { 0x0000, " " },
             { 0x0001, "あ" },
@@ -611,6 +664,11 @@ namespace Mirumo_Ougon_Maracas_no_Densetsu_Editor
             { 0x02BF, "右" },
             { 0x02C0, "~" },
             { 0x02C1, "・" },
+        };
+        public static Dictionary<string, ushort> AltCharMap = new()
+        {
+            { "-", 0x0097 },
+            { ".", 0x009D },
         };
     }
 }
